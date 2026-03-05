@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="LCOS Calculator — dynamic LCOS with degradation, replacement triggers, and discounted cash flows." />
+  <title>LCOS Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.68); }
+    @media (prefers-color-scheme: dark) { .glass { background: rgba(17,24,39,0.66); } }
+    input:focus, select:focus, button:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.35); }
+    .mono { font-variant-numeric: tabular-nums; }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .tiny { font-size: 12px; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <div class="mx-auto max-w-7xl px-4 py-8">
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">LCOS Calculator</h1>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btnShare" class="rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">
+          Copy Share Link
+        </button>
+        <button id="btnReset" class="rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-2 text-sm font-medium hover:opacity-90">
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <main class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section class="lg:col-span-7 space-y-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 glass p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Inputs</h2>
+            <span id="msg" class="text-sm text-rose-600"></span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-950/40">
+              <div class="text-sm font-semibold mb-3">A. System & operation</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">P (MW)</label>
+                  <input id="P_MW" type="number" step="0.001" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">E (MWh)</label>
+                  <input id="E_MWh" type="number" step="0.001" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">DOD (%)</label>
+                  <input id="DOD_pct" type="number" step="0.1" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Tn (cycles/yr)</label>
+                  <input id="Tn" type="number" step="1" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">N (years)</label>
+                  <input id="N_years" type="number" step="1" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Pel (CNY/kWh)</label>
+                  <input id="Pel" type="number" step="0.001" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-950/40">
+              <div class="text-sm font-semibold mb-3">B. Finance</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">O&M X (%)</label>
+                  <input id="X_pct" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Discount r (%)</label>
+                  <input id="r_pct" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Residual Y (%)</label>
+                  <input id="Y_pct" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Self-loss ηself (0–1)</label>
+                  <input id="etaSelf" type="number" step="0.001" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-950/40">
+              <div class="text-sm font-semibold mb-3">C. Performance & lifetime</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Round-trip φ (%)</label>
+                  <input id="phi_pct" type="number" step="0.1" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">TN (cycles)</label>
+                  <input id="TN" type="number" step="1" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-950/40">
+              <div class="text-sm font-semibold mb-3">D. Costs & replacements</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Cpower (CNY/kW)</label>
+                  <input id="Cpower" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Cenergy (CNY/kWh)</label>
+                  <input id="Cenergy" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Crep_P (CNY/kW)</label>
+                  <input id="CrepP" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="tiny text-slate-600 dark:text-slate-300">Crep_E (CNY/kWh)</label>
+                  <input id="CrepE" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+                <div class="col-span-2">
+                  <label class="tiny text-slate-600 dark:text-slate-300">Replacement learning i (%)</label>
+                  <input id="i_pct" type="number" step="0.01" class="w-full mt-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/40 px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-2 justify-end">
+            <button id="btnCompute" class="rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold hover:opacity-95">Compute</button>
+            <button id="btnExport" class="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">Export CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="lg:col-span-5 space-y-6">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 glass p-5">
+          <div class="flex items-start justify-between gap-2">
+            <h2 class="text-lg font-semibold">Results</h2>
+            <span id="badge" class="hidden rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-1 text-xs font-semibold">Updated</span>
+          </div>
+
+          <div class="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-4">
+            <div class="tiny text-slate-600 dark:text-slate-300">LCOS</div>
+            <div id="lcos" class="mono text-3xl font-semibold mt-1">—</div>
+            <div class="tiny text-slate-500 dark:text-slate-400 mt-1">CNY / kWh</div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-3">
+              <div class="tiny text-slate-600 dark:text-slate-300">Etotal (PV)</div>
+              <div id="etotal" class="mono text-lg font-semibold mt-1">—</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-3">
+              <div class="tiny text-slate-600 dark:text-slate-300">Replacements K</div>
+              <div id="K" class="mono text-lg font-semibold mt-1">—</div>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-4">
+            <div class="text-sm font-semibold">Cost breakdown (PV)</div>
+            <div class="mt-3">
+              <div class="w-full h-3 rounded-full bg-slate-200/70 dark:bg-slate-800/70 overflow-hidden flex">
+                <div id="bar_Cinv" class="h-3 bg-slate-900 dark:bg-slate-100" style="width:0%"></div>
+                <div id="bar_COM"  class="h-3 bg-slate-600 dark:bg-slate-400" style="width:0%"></div>
+                <div id="bar_Crep" class="h-3 bg-blue-600" style="width:0%"></div>
+                <div id="bar_Cchg" class="h-3 bg-emerald-600" style="width:0%"></div>
+              </div>
+
+              <div class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded bg-slate-900 dark:bg-slate-100"></span><span>CAPEX (Cinv)</span></div>
+                  <span id="Cinv" class="mono">—</span> <span id="pct_Cinv" class="mono tiny text-slate-500 dark:text-slate-400">—</span>
+                </div>
+                <div class="mt-1 w-full h-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 overflow-hidden">
+                  <div id="mini_Cinv" class="h-1.5 bg-slate-900 dark:bg-slate-100" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded bg-slate-600 dark:bg-slate-400"></span><span>O&M (COM)</span></div>
+                  <span id="COM" class="mono">—</span> <span id="pct_COM" class="mono tiny text-slate-500 dark:text-slate-400">—</span>
+                </div>
+                <div class="mt-1 w-full h-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 overflow-hidden">
+                  <div id="mini_COM" class="h-1.5 bg-slate-600 dark:bg-slate-400" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded bg-blue-600"></span><span>Replacement (Crep)</span></div>
+                  <span id="Crep" class="mono">—</span> <span id="pct_Crep" class="mono tiny text-slate-500 dark:text-slate-400">—</span>
+                </div>
+                <div class="mt-1 w-full h-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 overflow-hidden">
+                  <div id="mini_Crep" class="h-1.5 bg-blue-600" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded bg-emerald-600"></span><span>Charging (Cchg)</span></div>
+                  <span id="Cchg" class="mono">—</span> <span id="pct_Cchg" class="mono tiny text-slate-500 dark:text-slate-400">—</span>
+                </div>
+                <div class="mt-1 w-full h-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 overflow-hidden">
+                  <div id="mini_Cchg" class="h-1.5 bg-emerald-600" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded bg-rose-600"></span><span>Residual (−Crec)</span></div>
+                  <span id="Crec" class="mono">—</span> <span id="pct_Crec" class="mono tiny text-slate-500 dark:text-slate-400">—</span>
+                </div>
+                <div class="mt-1 w-full h-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 overflow-hidden">
+                  <div id="mini_Crec" class="h-1.5 bg-rose-600" style="width:0%"></div>
+                </div>
+                <div class="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between font-semibold">
+                  <span>Net total (Ctotal)</span><span id="Ctotal" class="mono">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 p-4">
+            <div class="text-sm font-semibold">Replacement schedule</div>
+            <div id="sched" class="mt-2 text-sm text-slate-700 dark:text-slate-200">—</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mt-10 text-xs text-slate-500 dark:text-slate-400">LCOS Calculator · v1.0</footer>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function isFiniteNumber(x){ return typeof x === "number" && Number.isFinite(x); }
+function fmt(x, digits=2){
+  if (!isFiniteNumber(x)) return "—";
+  const absx = Math.abs(x);
+  if (absx !== 0 && absx < 0.01) return x.toExponential(3);
+  return x.toLocaleString(undefined, {maximumFractionDigits: digits, minimumFractionDigits: digits});
+}
+function fmtInt(x){ if (!isFiniteNumber(x)) return "—"; return Math.round(x).toLocaleString(); }
+function df(n, r){ return 1 / Math.pow(1 + r, n); }
+function geomSum(a, nTerms){
+  if (nTerms <= 0) return 0;
+  if (Math.abs(a - 1) < 1e-14) return nTerms;
+  return (1 - Math.pow(a, nTerms)) / (1 - a);
+}
+function annualSumFactor(Jn, Tn, TN, a){
+  let rem = Tn, offset = Jn, sumFactor = 0;
+  while(rem > 0){
+    const m = Math.min(rem, TN - offset);
+    sumFactor += Math.pow(a, offset) * geomSum(a, m);
+    rem -= m;
+    offset = 0;
+    if (m === 0) break;
+  }
+  return sumFactor;
+}
+function computeLCOS(params){
+  const P_kW = params.P_MW * 1000;
+  const E_kWh = params.E_MWh * 1000;
+  const DOD = params.DOD_pct / 100;
+  const phi = params.phi_pct / 100;
+  const X = params.X_pct / 100;
+  const r = params.r_pct / 100;
+  const Y = params.Y_pct / 100;
+  const i = params.i_pct / 100;
+  const Tn = params.Tn;
+  const N = params.N_years;
+  const TN = params.TN;
+  const etaSelf = params.etaSelf;
+  const Pel = params.Pel;
+  const Cpower = params.Cpower;
+  const Cenergy = params.Cenergy;
+  const CrepP = params.CrepP;
+  const CrepE = params.CrepE;
+
+  const errs = [];
+  if (!(P_kW > 0)) errs.push("P (MW) must be > 0");
+  if (!(E_kWh > 0)) errs.push("E (MWh) must be > 0");
+  if (!(DOD > 0 && DOD <= 1)) errs.push("DOD (%) must be in (0, 100]");
+  if (!(phi > 0 && phi <= 1)) errs.push("φ (%) must be in (0, 100]");
+  if (!(Tn > 0)) errs.push("Tn must be > 0");
+  if (!(N > 0)) errs.push("N must be > 0");
+  if (!(TN > 0)) errs.push("TN must be > 0");
+  if (!(etaSelf >= 0 && etaSelf < 1)) errs.push("ηself should be in [0, 1)");
+  if (!(r >= 0)) errs.push("Discount rate r should be ≥ 0");
+  if (errs.length) return {ok:false, errs};
+
+  const Cinv = Cpower * P_kW + Cenergy * E_kWh;
+
+  let COM = 0;
+  for(let n=1; n<=N; n++) COM += (X * Cinv) * df(n, r);
+
+  const Crec = (Y * Cinv) * df(N, r);
+  const a = Math.pow(0.8, 1 / TN);
+  const Ctot = N * Tn;
+
+  const K = Math.max(0, Math.ceil(Ctot / TN) - 1);
+
+  const t_k = [], m_k = [];
+  for(let k=1; k<=K; k++){
+    const tk = Math.ceil((k * TN) / Tn);
+    const mk = k * TN - (tk - 1) * Tn;
+    t_k.push(tk); m_k.push(mk);
+  }
+
+  const annual = [];
+  let Etotal = 0;
+  for(let n=1; n<=N; n++){
+    const bn = Math.floor(((n - 1) * Tn) / TN);
+    const Jn = (n - 1) * Tn - bn * TN;
+    const sumFactor = annualSumFactor(Jn, Tn, TN, a);
+    const En_nom = E_kWh * DOD * phi * (1 - etaSelf) * sumFactor;
+    const En_pv = En_nom * df(n, r);
+    annual.push({year:n, En_nom, En_pv});
+    Etotal += En_pv;
+  }
+
+  const Cchg = (Pel / phi) * Etotal;
+
+  let Crep = 0;
+  for(let idx=0; idx<K; idx++){
+    const tk = t_k[idx];
+    const repUnit = (CrepP * P_kW + CrepE * E_kWh) * Math.pow(1 - i, tk);
+    Crep += repUnit * df(tk, r);
+  }
+
+  const Ctotal = Cinv + COM + Crep + Cchg - Crec;
+  const LCOS = Ctotal / Etotal;
+  return {ok:true, outputs:{LCOS, Etotal, Cinv, COM, Crep, Cchg, Crec, Ctotal, K, t_k, m_k, a}, annual};
+}
+
+const paramKeys = ["P_MW","E_MWh","DOD_pct","Tn","N_years","Pel","X_pct","r_pct","Y_pct","etaSelf","phi_pct","TN","Cpower","Cenergy","CrepP","CrepE","i_pct"];
+function makeShareUrl(){
+  const qs = new URLSearchParams();
+  const p = getForm();
+  paramKeys.forEach(k=>qs.set(k, String(p[k])));
+  const url = new URL(window.location.href);
+  url.search = qs.toString();
+  return url.toString();
+}
+function loadFromUrl(){
+  const qs = new URLSearchParams(window.location.search);
+  let has=false; const p={};
+  paramKeys.forEach(k=>{ if(qs.has(k)){ has=true; p[k]=Number(qs.get(k)); }});
+  if(has) setForm(p);
+  return has;
+}
+function setForm(p){
+  if (p.P_MW !== undefined) $("P_MW").value = p.P_MW;
+  if (p.E_MWh !== undefined) $("E_MWh").value = p.E_MWh;
+  if (p.DOD_pct !== undefined) $("DOD_pct").value = p.DOD_pct;
+  if (p.Tn !== undefined) $("Tn").value = p.Tn;
+  if (p.N_years !== undefined) $("N_years").value = p.N_years;
+  if (p.Pel !== undefined) $("Pel").value = p.Pel;
+  if (p.X_pct !== undefined) $("X_pct").value = p.X_pct;
+  if (p.r_pct !== undefined) $("r_pct").value = p.r_pct;
+  if (p.Y_pct !== undefined) $("Y_pct").value = p.Y_pct;
+  if (p.etaSelf !== undefined) $("etaSelf").value = p.etaSelf;
+  if (p.phi_pct !== undefined) $("phi_pct").value = p.phi_pct;
+  if (p.TN !== undefined) $("TN").value = p.TN;
+  if (p.Cpower !== undefined) $("Cpower").value = p.Cpower;
+  if (p.Cenergy !== undefined) $("Cenergy").value = p.Cenergy;
+  if (p.CrepP !== undefined) $("CrepP").value = p.CrepP;
+  if (p.CrepE !== undefined) $("CrepE").value = p.CrepE;
+  if (p.i_pct !== undefined) $("i_pct").value = p.i_pct;
+}
+function getForm(){
+  return {
+    P_MW:Number($("P_MW").value), E_MWh:Number($("E_MWh").value),
+    DOD_pct:Number($("DOD_pct").value), Tn:Number($("Tn").value),
+    N_years:Number($("N_years").value), Pel:Number($("Pel").value),
+    X_pct:Number($("X_pct").value), r_pct:Number($("r_pct").value),
+    Y_pct:Number($("Y_pct").value), etaSelf:Number($("etaSelf").value),
+    phi_pct:Number($("phi_pct").value), TN:Number($("TN").value),
+    Cpower:Number($("Cpower").value), Cenergy:Number($("Cenergy").value),
+    CrepP:Number($("CrepP").value), CrepE:Number($("CrepE").value),
+    i_pct:Number($("i_pct").value)
+  };
+}
+
+let lastResult=null;
+function setBar(id, pct){ $(id).style.width = Math.max(0, Math.min(100, pct)) + "%"; }
+function renderResult(res){
+  $("msg").textContent="";
+  if(!res.ok){ $("msg").textContent=res.errs.join(" · "); $("badge").classList.add("hidden"); return; }
+  $("badge").classList.remove("hidden");
+  const o=res.outputs;
+  $("lcos").textContent=fmt(o.LCOS, 6);
+  $("etotal").textContent=fmt(o.Etotal, 2);
+  $("K").textContent=fmtInt(o.K);
+  $("Cinv").textContent=fmt(o.Cinv, 2);
+  $("COM").textContent=fmt(o.COM, 2);
+  $("Crep").textContent=fmt(o.Crep, 2);
+  $("Cchg").textContent=fmt(o.Cchg, 2);
+  $("Crec").textContent=fmt(o.Crec, 2);
+  $("Ctotal").textContent=fmt(o.Ctotal, 2);
+
+  
+  const gross=o.Cinv+o.COM+o.Crep+o.Cchg;
+  const invPct=gross>0?(o.Cinv/gross)*100:0;
+  const omPct=gross>0?(o.COM/gross)*100:0;
+  const repPct=gross>0?(o.Crep/gross)*100:0;
+  const chgPct=gross>0?(o.Cchg/gross)*100:0;
+  const recPct=gross>0?(o.Crec/gross)*100:0;
+
+  const sumPct=invPct+omPct+repPct+chgPct;
+  const scale=sumPct>0?100/sumPct:0;
+  setBar("bar_Cinv", invPct*scale);
+  setBar("bar_COM",  omPct*scale);
+  setBar("bar_Crep", repPct*scale);
+  setBar("bar_Cchg", chgPct*scale);
+
+  $("pct_Cinv").textContent = `(${invPct.toFixed(1)}%)`;
+  $("pct_COM").textContent  = `(${omPct.toFixed(1)}%)`;
+  $("pct_Crep").textContent = `(${repPct.toFixed(1)}%)`;
+  $("pct_Cchg").textContent = `(${chgPct.toFixed(1)}%)`;
+  $("pct_Crec").textContent = `(${recPct.toFixed(1)}%)`;
+
+  setBar("mini_Cinv", invPct);
+  setBar("mini_COM",  omPct);
+  setBar("mini_Crep", repPct);
+  setBar("mini_Cchg", chgPct);
+  setBar("mini_Crec", recPct);
+
+
+  if(o.K===0) $("sched").textContent="K = 0 (no replacements within project horizon)";
+  else $("sched").textContent=o.t_k.map((tk,idx)=>`#${idx+1}: t_k=${tk}, m_k=${o.m_k[idx]}`).join(" · ");
+  lastResult=res;
+}
+function computeAndRender(){ renderResult(computeLCOS(getForm())); }
+
+function exportCSV(){
+  if(!lastResult||!lastResult.ok){ $("msg").textContent="Compute once before exporting."; return; }
+  const lines=[["Year","En_nom_kWh_out","En_PV_kWh_out"]];
+  lastResult.annual.forEach(r=>lines.push([r.year,r.En_nom,r.En_pv]));
+  const csv=lines.map(row=>row.join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="LCOS_annual_energy.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+$("btnCompute").addEventListener("click", computeAndRender);
+$("btnExport").addEventListener("click", exportCSV);
+
+$("btnReset").addEventListener("click", ()=>{
+  setForm({
+    P_MW:100, E_MWh:400, DOD_pct:92, Tn:400, N_years:20, Pel:0.2,
+    X_pct:2, r_pct:6, Y_pct:10, etaSelf:0,
+    phi_pct:90, TN:9000,
+    Cpower:400, Cenergy:1250, CrepP:0, CrepE:850, i_pct:10
+  });
+  computeAndRender();
+});
+
+$("btnShare").addEventListener("click", async ()=>{
+  const url=makeShareUrl();
+  try{ await navigator.clipboard.writeText(url);
+    $("msg").textContent="Share link copied."; setTimeout(()=>{$("msg").textContent="";}, 2200);
+  }catch(e){ $("msg").textContent="Copy failed. Please copy the URL from the address bar."; }
+});
+
+(function init(){
+  setForm({
+    P_MW:100, E_MWh:400, DOD_pct:92, Tn:400, N_years:20, Pel:0.2,
+    X_pct:2, r_pct:6, Y_pct:10, etaSelf:0,
+    phi_pct:90, TN:9000,
+    Cpower:400, Cenergy:1250, CrepP:0, CrepE:850, i_pct:10
+  });
+  loadFromUrl();
+  computeAndRender();
+})();
+</script>
+</body>
+</html>
